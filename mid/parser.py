@@ -7,8 +7,8 @@ THis is the markdown parse section.
 
 """
 
-from ply.yacc import yacc
-from lexer import tokens
+from mid.ply import yacc
+from mid.lexer import tokens
 
 precedence = (
     ('left', 'PRIORITY0'),
@@ -66,14 +66,15 @@ def p_md_codefield(p):
     p[0] = "{}{}\n</code></pre>".format(p[1], p[2])
 
 
+# todo: 引用间有空行，则新的引用标签
 # quote
 # need quote node
 def p_md_quote(p):
     'md : md quote'
     if p[1][-18:] == "</p></blockquote>\n":
-        p[0] = p[1][:-18] + p[2] + p[1][-18:]
+        p[0] = p[1][:-18] + p[2][:-17] + p[1][-18:]
     else:
-        p[0] = p[1] + "<blockquote><p>" + p[2] + '\n'
+        p[0] = '{}<blockquote><p>{}\n'.format(p[1], p[2])
 
 
 def p_md_image(p):
@@ -91,20 +92,31 @@ def p_md_empty(p):
     p[0] = p[1]
 
 
+# todo: 有序列表start=指定数字
 def p_md_listnumber(p):
-    'md : md LISTNUMBER paragraph %prec PRIORITY0'
-    p[0] = '{}\n<ol start="{}" style="list-style-type: decimal"><li>{}</li></ol>' \
-        .format(p[1], p[2], p[3])
+    'md : md listnumber'
+    if p[1][-6:] == '</ol>\n':
+        p[0] = p[1][:-6] + p[2]
+    else:
+        p[0] = '{}<ol>{}'.format(p[1], p[2])
+
+
+def p_listnumber(p):
+    'listnumber : LISTNUMBER paragraph'
+    p[0] = '<li>{}</li></ol>\n'.format(p[2])
 
 
 def p_md_listdash(p):
     'md : md listdash'
-    p[0] = '{}<ul><li>{}'.format(p[1], p[2])
+    if p[1][-6:] == '</ul>\n':
+        p[0] = p[1][:-6] + p[2]
+    else:
+        p[0] = '{}<ul>{}'.format(p[1], p[2])
 
 
 def p_listdash(p):
     'listdash : LISTDASH paragraph'
-    p[0] = '{}</li></ul>'.format(p[2])
+    p[0] = '<li>{}</li></ul>\n'.format(p[2])
 
 
 """code field"""
@@ -236,9 +248,9 @@ def p_error(p):
     print("Syntax error at {}-{}".format(p.type, p.value))
 
 
-parse = yacc()
+my_parse = yacc.yacc()
 
 
-def parser(data):
-    res = parse.parse(data, tracking=True)
+def parse(data):
+    res = my_parse.parse(data, tracking=True)
     return res
